@@ -81,3 +81,23 @@ def create_syvai_embed_nano_0925() -> SebModel:
         encoder=LazyLoadEncoder(partial(wrap_syvai_embed_nano, model_name=hf_name)),  # type: ignore
         meta=meta,
     )
+
+
+@models.register("Qwen3-Embedding-0.6B")
+def create_qwen3_embedding_0_6b() -> SebModel:
+    """Create the Qwen3-Embedding-0.6B model."""
+    hf_name = "Qwen/Qwen3-Embedding-0.6B"
+    meta = ModelMeta(
+        name=hf_name.split("/")[-1],
+        huggingface_name=hf_name,
+        reference=f"https://huggingface.co/{hf_name}",
+        languages=["en"],  # English-focused model
+        open_source=True,
+        embedding_size=1024,  # Same architecture as SyvAI model
+        architecture="SentenceTransformer",
+        release_date=date(2024, 12, 1),  # Approximate release date
+    )
+    return SebModel(
+        encoder=LazyLoadEncoder(partial(wrap_syvai_embed_nano, model_name=hf_name)),  # type: ignore
+        meta=meta,
+    )
