@@ -37,7 +37,7 @@ class SyvaiEmbedNanoEncoder(SentenceTransformer):
             prompt = "Instruct: Find text that answers the question.\n\nQuery: "
             emb = super().encode(sentences, prompt=prompt, batch_size=batch_size, **kwargs)
         else:
-            prompt = "Instruct: Find similar text.\n\nQuery:"
+            prompt = "Instruct: Find similar text.\n\nQuery: "
             emb = super().encode(sentences, batch_size=batch_size, **kwargs)
         
         return normalize_to_ndarray(emb)
