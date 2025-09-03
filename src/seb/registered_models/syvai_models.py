@@ -18,6 +18,64 @@ from .normalize_to_ndarray import normalize_to_ndarray
 from .sentence_transformer_models import silence_warnings_from_sentence_transformers
 
 
+def task_to_instruction(task: Task) -> str:
+    """Generate task-specific instructions for Qwen embedding models."""
+    if task.task_type in ["STS"]:
+        return "Retrieve semantically similar text"
+    if task.task_type in ["Summarization"]:
+        return "Given a news summary, retrieve other semantically similar summaries"
+    if task.task_type in ["BitextMining"]:
+        task_name_to_instruct: dict[str, str] = {
+            "Bornholm Parallel": "Retrieve parallel sentences in Danish and Bornholmsk",
+            "Norwegian courts": "Retrieve parallel sentences in Norwegian Bokmål and Nynorsk",
+        }
+        default_instruction = "Retrieve parallel sentences."
+        return task_name_to_instruct.get(task.name, default_instruction)
+    if task.task_type in ["Classification"]:
+        task_name_to_instruct: dict[str, str] = {
+            "Angry Tweets": "Classify Danish tweets by sentiment. (positive, negative, neutral)",
+            "DKHate": "Classify Danish tweets based on offensiveness (offensive, not offensive)",
+            "Da Political Comments": "Classify Danish political comments for sentiment",
+            "DaLAJ": "Classify texts based on linguistic acceptability in Swedish",
+            "LCC": "Classify texts based on sentiment",
+            "Language Identification": "Classify texts based on language",
+            "Massive Intent": "Given a user utterance as query, find the user intents",
+            "Massive Scenario": "Given a user utterance as query, find the user scenarios",
+            "NoReC": "Classify Norwegian reviews by sentiment",
+            "SweReC": "Classify Swedish reviews by sentiment",
+            "Norwegian parliament": "Classify parliament speeches in Norwegian based on political affiliation",
+            "ScaLA": "Classify passages in Scandinavian Languages based on linguistic acceptability",
+        }
+        default_instruction = "Classify user passages"
+        return task_name_to_instruct.get(task.name, default_instruction)
+    if task.task_type in ["Clustering"]:
+        task_name_to_instruct: dict[str, str] = {
+            "ArxivClusteringP2P": "Identify the main and secondary category of Arxiv papers based on the titles and abstracts",
+            "VG Clustering": "Identify the categories (e.g. sports) of given articles in Norwegian",
+            "SNL Clustering": "Identify categories in a Norwegian lexicon",
+            "SwednClustering": "Identify news categories in Swedish passages",
+        }
+        default_instruction = "Identify categories in user passages"
+        return task_name_to_instruct.get(task.name, default_instruction)
+    if task.task_type in ["Reranking"]:
+        return "Retrieve semantically similar passages."
+    if task.task_type in ["Retrieval"]:
+        task_name_to_instruct: dict[str, str] = {
+            "Twitterhjerne": "Retrieve answers to questions asked in Danish tweets",
+            "SwednRetrieval": "Given a Swedish news headline retrieve summaries or news articles",
+            "TV2Nord Retrieval": "Given a summary of a Danish news article retrieve the corresponding news article",
+            "DanFEVER": "Given a claim in Danish, retrieve documents that support the claim",
+            "SNL Retrieval": "Given a lexicon headline in Norwegian, retrieve its article",
+            "NorQuad": "Given a question in Norwegian, retrieve the answer from Wikipedia articles",
+            "SweFAQ": "Retrieve answers given questions in Swedish",
+            "ArguAna": "Given a claim, find documents that refute the claim",
+            "ClimateFEVER": "Given a claim about climate change, retrieve documents that support or refute the claim",
+        }
+        default_instruction = "Retrieve text based on user query."
+        return task_name_to_instruct.get(task.name, default_instruction)
+    return ""
+
+
 class SyvaiEmbedNanoEncoder(SentenceTransformer):
     """
     A sentence transformer wrapper for SyvAI embed-nano-0925 that supports custom prompts.
@@ -68,17 +126,29 @@ class QwenEmbeddingEncoder(SentenceTransformer):
         sentences: list[str],
         *,
         batch_size: int = 32,
-        task: Optional[Task] = None,  # noqa: ARG002
+        task: Optional[Task] = None,
         encode_type: Literal["query", "passage"] = "passage",
         **kwargs: Any,
     ) -> np.ndarray:
-        # Use the built-in prompt system for Qwen models
-        if encode_type == "query":
-            # Use the built-in query prompt
-            emb = super().encode(sentences, prompt_name="query", batch_size=batch_size, **kwargs)
+        # Use task-specific instructions for better performance
+        if task is not None:
+            instruction = task_to_instruction(task)
+            if instruction:
+                # Prepend the instruction to each sentence
+                instructed_sentences = [f"{instruction}\n\n{sentence}" for sentence in sentences]
+                emb = super().encode(instructed_sentences, batch_size=batch_size, **kwargs)
+            else:
+                # Fall back to built-in prompt system for queries
+                if encode_type == "query":
+                    emb = super().encode(sentences, prompt_name="query", batch_size=batch_size, **kwargs)
+                else:
+                    emb = super().encode(sentences, batch_size=batch_size, **kwargs)
         else:
-            # For passages/documents, encode without prompt
-            emb = super().encode(sentences, batch_size=batch_size, **kwargs)
+            # Use the built-in prompt system for Qwen models when no task context
+            if encode_type == "query":
+                emb = super().encode(sentences, prompt_name="query", batch_size=batch_size, **kwargs)
+            else:
+                emb = super().encode(sentences, batch_size=batch_size, **kwargs)
         
         return normalize_to_ndarray(emb)
 
@@ -167,9 +237,9 @@ def create_qwen3_embedding_0_6b() -> SebModel:
         meta=meta,
     )
 
-@models.register("Qwen/Qwen3-Embedding-4B")
+@models.register("Qwen3-Embedding-4B")
 def create_qwen3_embedding_4b() -> SebModel:
-    """Create the Qwen3-Embedding-0.6B model."""
+    """Create the Qwen3-Embedding-4B model."""
     hf_name = "Qwen/Qwen3-Embedding-4B"
     meta = ModelMeta(
         name=hf_name.split("/")[-1],
@@ -186,9 +256,10 @@ def create_qwen3_embedding_4b() -> SebModel:
         meta=meta,
     )
 
-@models.register("Qwen/Qwen3-Embedding-8B")
-def create_qwen3_embedding_4b() -> SebModel:
-    """Create the Qwen3-Embedding-0.6B model."""
+
+@models.register("Qwen3-Embedding-8B")
+def create_qwen3_embedding_8b() -> SebModel:
+    """Create the Qwen3-Embedding-8B model."""
     hf_name = "Qwen/Qwen3-Embedding-8B"
     meta = ModelMeta(
         name=hf_name.split("/")[-1],
