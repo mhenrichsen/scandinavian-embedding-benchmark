@@ -7,6 +7,7 @@ from functools import partial
 from typing import Any, Literal, Optional
 
 import numpy as np
+import torch
 from sentence_transformers import SentenceTransformer
 
 from seb.interfaces.model import LazyLoadEncoder, ModelMeta, SebModel
@@ -110,7 +111,8 @@ def wrap_qwen_embedding(model_name: str, **kwargs: Any) -> QwenEmbeddingEncoder:
     model_kwargs = kwargs.get("model_kwargs", {})
     model_kwargs.update({
         "attn_implementation": "flash_attention_2",
-        "device_map": "auto"
+        "device_map": "auto",
+        "torch_dtype": torch.float16  # Flash Attention requires fp16 or bf16
     })
     
     tokenizer_kwargs = kwargs.get("tokenizer_kwargs", {})
