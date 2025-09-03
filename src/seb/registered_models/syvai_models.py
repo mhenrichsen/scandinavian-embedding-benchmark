@@ -185,3 +185,22 @@ def create_qwen3_embedding_4b() -> SebModel:
         encoder=LazyLoadEncoder(partial(wrap_qwen_embedding, model_name=hf_name)),  # type: ignore
         meta=meta,
     )
+
+@models.register("Qwen/Qwen3-Embedding-8B")
+def create_qwen3_embedding_4b() -> SebModel:
+    """Create the Qwen3-Embedding-0.6B model."""
+    hf_name = "Qwen/Qwen3-Embedding-8B"
+    meta = ModelMeta(
+        name=hf_name.split("/")[-1],
+        huggingface_name=hf_name,
+        reference=f"https://huggingface.co/{hf_name}",
+        languages=["en"],  # English-focused model
+        open_source=True,
+        embedding_size=1024,  # Same architecture as SyvAI model
+        architecture="SentenceTransformer",
+        release_date=date(2024, 12, 1),  # Approximate release date
+    )
+    return SebModel(
+        encoder=LazyLoadEncoder(partial(wrap_qwen_embedding, model_name=hf_name)),  # type: ignore
+        meta=meta,
+    )
